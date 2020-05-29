@@ -1,0 +1,27 @@
+{
+  "name": "js-functions-simulation",
+  "version": "0.0.1",
+  "description": "Simulation implementation of some JavaScript functions or features",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [
+    "javascript",
+    "functions",
+    "implementation",
+    "mock"
+  ],
+  "author": "willemwei023@gmail.com",
+  "license": "ISC",
+  "dependencies": {
+    "jest": "^26.0.1",
+    "jest-watch-typeahead": "^0.6.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.10.1",
+    "@babel/preset-env": "^7.10.1",
+    "@babel/preset-typescript": "^7.10.1",
+    "@types/jest": "^25.2.3"
+  }
+}
