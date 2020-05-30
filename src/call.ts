@@ -1,5 +1,7 @@
-const call = (text: string) => {
-    return text;
+interface Function {
+    wcall(this: Function, thisArg: any, ...args: any[]): any;
 }
 
-export default call;
+Function.prototype.wcall = function (thisArg) {
+    
+}

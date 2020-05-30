@@ -1,7 +1,6 @@
-import call from '../src/call';
+import '../src/call';
 
-describe('Call', () => {
-    it('test', () => {
-        expect(call('willem')).toBe('willem');
-    });
+describe('Function.Call', () => {
+   it('test', () => {}); 
 });
+

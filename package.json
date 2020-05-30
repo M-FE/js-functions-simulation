@@ -1,10 +1,12 @@
 {
   "name": "js-functions-simulation",
   "version": "0.0.1",
-  "description": "Simulation implementation of some JavaScript functions or features",
+  "description": "Simulation implementation of some JavaScript functions or features with typescript",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "dev": "tsc -w",
+    "test": "jest",
+    "build": "tsc"
   },
   "keywords": [
     "javascript",
@@ -23,5 +25,10 @@
     "@babel/preset-env": "^7.10.1",
     "@babel/preset-typescript": "^7.10.1",
     "@types/jest": "^25.2.3"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run test"
+    }
   }
 }
