@@ -17,7 +17,7 @@ describe('Function.Call', () => {
       expect(thisFn.wcall(obj)).toEqual(obj);
    });
 
-   it('函数执行并返回结果', () => {
+   it('将参数一个个的传入函数执行并返回结果', () => {
       expect(addFn.wcall(obj, 'aa', 'bb')).toBe('willemaabb');
    });
 });
