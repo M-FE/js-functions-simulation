@@ -2,6 +2,9 @@ interface Function {
     wapply(this: Function, thisArg: any, args?: any[]): any;
 }
 
+/**
+ * 使用eval，而没使用...结构是为了使用es5的语法来实现call函数
+ */
 Function.prototype.wapply = function(thisArg, args) {
     const context = thisArg || window;
     let ret;
