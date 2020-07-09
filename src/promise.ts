@@ -1,6 +1,6 @@
 type Resolve = (value?: any) => any;
 type Reject = (reason?: any) => any;
-type Executor = (resolve: Resolve, reject: Reject) => void;
+type Executor = (_resolve: Resolve, _reject: Reject) => void;
 type Then = (onFullfilled?: Resolve, onRejected?: Reject) => WPromise;
 interface Callback {
     onFullfilled?: Resolve;
@@ -20,16 +20,16 @@ class WPromise {
     private callbacks: Callback[] = [];
 
     constructor(executor: Executor) {
-        executor(this.resolve, this.reject);
+        executor(this._resolve, this._reject);
     }
 
     then: Then = (onFullfilled, onRejected) => {
         return new WPromise((nextResolve, nextReject) => {
-            this.handler({ onFullfilled, onRejected, nextResolve, nextReject });
+            this._handler({ onFullfilled, onRejected, nextResolve, nextReject });
         });
     }
 
-    private handler = (callback: Callback) => {
+    private _handler = (callback: Callback) => {
         if (this.status === WPromise.PENDING) {
             this.callbacks.push(callback);
             return;
@@ -49,29 +49,29 @@ class WPromise {
         }
     }
 
-    private resolve: Resolve = (value) => {
+    private _resolve: Resolve = (value) => {
         // 链式调用时，针对下一个的promise
         // then方法返回一个promise时，value则返回promise执行的结果
         if (value instanceof WPromise) {
-            value.then(this.resolve);
+            value.then(this._resolve);
             return;
         }
 
         this.value = value;
         this.status = WPromise.FULFILLED;
 
-        this.callbacks.forEach(callback => this.handler(callback));
+        this.callbacks.forEach(callback => this._handler(callback));
     }
 
-    private reject: Reject = (reason) => {
+    private _reject: Reject = (reason) => {
         if (reason instanceof WPromise) {
-            reason.then(undefined, this.reject);
+            reason.then(undefined, this._reject);
             return;
         }
 
         this.reason = reason;
         this.status = WPromise.REJECTED;
 
-        this.callbacks.forEach(callback => this.handler(callback));
+        this.callbacks.forEach(callback => this._handler(callback));
     }
 }
