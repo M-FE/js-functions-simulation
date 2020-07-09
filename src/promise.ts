@@ -1,7 +1,7 @@
 type Resolve = (value?: any) => any;
 type Reject = (reason?: any) => any;
 type Executor = (resolve: Resolve, reject: Reject) => void;
-type Then = (onFullfilled: Resolve, onRejected?: Reject) => WPromise;
+type Then = (onFullfilled?: Resolve, onRejected?: Reject) => WPromise;
 interface Callback {
     onFullfilled?: Resolve;
     onRejected?: Reject;
@@ -50,11 +50,11 @@ class WPromise {
     }
 
     private resolve: Resolve = (value) => {
-        // 针对下一个的promise
+        // 链式调用时，针对下一个的promise
         // then方法返回一个promise时，value则返回promise执行的结果
-        // 链式调用
         if (value instanceof WPromise) {
-            return value.then(this.value);
+            value.then(this.resolve);
+            return;
         }
 
         this.value = value;
@@ -64,50 +64,14 @@ class WPromise {
     }
 
     private reject: Reject = (reason) => {
+        if (reason instanceof WPromise) {
+            reason.then(undefined, this.reject);
+            return;
+        }
+
         this.reason = reason;
         this.status = WPromise.REJECTED;
 
         this.callbacks.forEach(callback => this.handler(callback));
     }
 }
-
-const p = new WPromise((resolve) => {
-    setTimeout(() => {
-        resolve(1);
-    }, 1000);
-});
-
-const p1 = p.then((data) => {
-    console.log(data);
-    return new WPromise(resolve => setTimeout(() => {
-        resolve(data + 10)
-    }, 2000));
-});
-
-const p2 = p.then((data) => {
-    console.log(data);
-    return data + 2;
-});
-
-p1.then((data) => {
-    console.log(111, data);
-});
-
-// const firstPromise = new Promise((resolve, reject) => {
-//     console.log('first', 1);
-//     resolve(1);
-// });
-
-// const secondPromise = firstPromise.then((data: any) => {
-//     console.log('second: ', data + 1);
-//     // return data + 1;
-
-//     return new Promise((resolve) => {
-//         resolve(data + 1);
-//     });
-// }, () => {});
-
-// secondPromise.then((data: any) => {
-//     console.log('third', data + 1);
-//     return data + 1;
-// });
