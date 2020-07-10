@@ -6,10 +6,10 @@ var WPromise = /** @class */ (function () {
         this.callbacks = [];
         this.then = function (onFullfilled, onRejected) {
             return new WPromise(function (nextResolve, nextReject) {
-                _this.handler({ onFullfilled: onFullfilled, onRejected: onRejected, nextResolve: nextResolve, nextReject: nextReject });
+                _this._handler({ onFullfilled: onFullfilled, onRejected: onRejected, nextResolve: nextResolve, nextReject: nextReject });
             });
         };
-        this.handler = function (callback) {
+        this._handler = function (callback) {
             if (_this.status === WPromise.PENDING) {
                 _this.callbacks.push(callback);
                 return;
@@ -25,44 +25,30 @@ var WPromise = /** @class */ (function () {
                 nextReject(toNextReason);
             }
         };
-        this.resolve = function (value) {
-            // 针对下一个的promise
+        this._resolve = function (value) {
+            // 链式调用时，针对下一个的promise
             // then方法返回一个promise时，value则返回promise执行的结果
-            // 链式调用
             if (value instanceof WPromise) {
-                return value.then(_this.value);
+                value.then(_this._resolve);
+                return;
             }
             _this.value = value;
             _this.status = WPromise.FULFILLED;
-            _this.callbacks.forEach(function (callback) { return _this.handler(callback); });
+            _this.callbacks.forEach(function (callback) { return _this._handler(callback); });
         };
-        this.reject = function (reason) {
+        this._reject = function (reason) {
+            if (reason instanceof WPromise) {
+                reason.then(undefined, _this._reject);
+                return;
+            }
             _this.reason = reason;
             _this.status = WPromise.REJECTED;
-            _this.callbacks.forEach(function (callback) { return _this.handler(callback); });
+            _this.callbacks.forEach(function (callback) { return _this._handler(callback); });
         };
-        executor(this.resolve, this.reject);
+        executor(this._resolve.bind(this), this._reject.bind(this));
     }
     WPromise.PENDING = 'PENDING';
     WPromise.FULFILLED = 'FULFILLED';
     WPromise.REJECTED = 'REJECTED';
     return WPromise;
 }());
-var p = new WPromise(function (resolve) {
-    setTimeout(function () {
-        resolve(1);
-    }, 1000);
-});
-var p1 = p.then(function (data) {
-    console.log(data);
-    return new WPromise(function (resolve) { return setTimeout(function () {
-        resolve(data + 10);
-    }, 2000); });
-});
-var p2 = p.then(function (data) {
-    console.log(data);
-    return data + 2;
-});
-p1.then(function (data) {
-    console.log(data);
-});

@@ -20,7 +20,7 @@ class WPromise {
     private callbacks: Callback[] = [];
 
     constructor(executor: Executor) {
-        executor(this._resolve, this._reject);
+        executor(this._resolve.bind(this), this._reject.bind(this));
     }
 
     then: Then = (onFullfilled, onRejected) => {
