@@ -2,6 +2,8 @@ type Resolve = (value?: any) => any;
 type Reject = (reason?: any) => any;
 type Executor = (_resolve: Resolve, _reject: Reject) => void;
 type Then = (onFullfilled?: Resolve, onRejected?: Reject) => WPromise;
+type Catch = (onRejected?: Reject) => WPromise;
+type Finally = (onHandler?: Reject) => WPromise;
 interface Callback {
     onFullfilled?: Resolve;
     onRejected?: Reject;
@@ -29,6 +31,14 @@ class WPromise {
         });
     }
 
+    catch: Catch = (onRejected) => {
+        return this.then(undefined, onRejected);
+    }
+
+    finally: Finally = (onHandler) => {
+        return this.then(onHandler, onHandler);
+    }
+
     private _handler = (callback: Callback) => {
         if (this.status === WPromise.PENDING) {
             this.callbacks.push(callback);
@@ -45,7 +55,7 @@ class WPromise {
 
         if (this.status === WPromise.REJECTED && onRejected) {
             const toNextReason = onRejected(this.reason);
-            nextReject(toNextReason);
+            nextResolve(toNextReason);
         }
     }
 
@@ -53,7 +63,7 @@ class WPromise {
         // 链式调用时，针对下一个的promise
         // then方法返回一个promise时，value则返回promise执行的结果
         if (value instanceof WPromise) {
-            value.then(this._resolve);
+            value.then(this._resolve, this._reject);
             return;
         }
 
@@ -65,7 +75,7 @@ class WPromise {
 
     private _reject: Reject = (reason) => {
         if (reason instanceof WPromise) {
-            reason.then(undefined, this._reject);
+            reason.then(this._resolve, this._reject);
             return;
         }
 
