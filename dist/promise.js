@@ -9,6 +9,12 @@ var WPromise = /** @class */ (function () {
                 _this._handler({ onFullfilled: onFullfilled, onRejected: onRejected, nextResolve: nextResolve, nextReject: nextReject });
             });
         };
+        this.catch = function (onRejected) {
+            return _this.then(undefined, onRejected);
+        };
+        this.finally = function (onHandler) {
+            return _this.then(onHandler, onHandler);
+        };
         this._handler = function (callback) {
             if (_this.status === WPromise.PENDING) {
                 _this.callbacks.push(callback);
@@ -29,7 +35,7 @@ var WPromise = /** @class */ (function () {
             // 链式调用时，针对下一个的promise
             // then方法返回一个promise时，value则返回promise执行的结果
             if (value instanceof WPromise) {
-                value.then(_this._resolve);
+                value.then(_this._resolve, _this._reject);
                 return;
             }
             _this.value = value;
@@ -38,7 +44,7 @@ var WPromise = /** @class */ (function () {
         };
         this._reject = function (reason) {
             if (reason instanceof WPromise) {
-                reason.then(undefined, _this._reject);
+                reason.then(_this._resolve, _this._reject);
                 return;
             }
             _this.reason = reason;
@@ -50,5 +56,46 @@ var WPromise = /** @class */ (function () {
     WPromise.PENDING = 'PENDING';
     WPromise.FULFILLED = 'FULFILLED';
     WPromise.REJECTED = 'REJECTED';
+    WPromise.all = function (iterable) {
+        return new WPromise(function (resolve, reject) {
+            var ret = [];
+            var count = 0;
+            var _loop_1 = function (i) {
+                iterable[i].then(function (data) {
+                    ret[i] = data;
+                    count++;
+                    if (count === iterable.length) {
+                        resolve(ret);
+                    }
+                }, function (err) {
+                    reject(err);
+                });
+            };
+            for (var i = 0; i < iterable.length; i++) {
+                _loop_1(i);
+            }
+        });
+    };
     return WPromise;
 }());
+function fetchData(value, success, timer) {
+    if (success === void 0) { success = true; }
+    if (timer === void 0) { timer = 1000; }
+    return new WPromise(function (resolve, reject) {
+        setTimeout(function () {
+            success ? resolve(value) : reject(value);
+        }, timer);
+    });
+}
+var promises = [
+    fetchData('a', true, 1000),
+    fetchData('c', false, 3000),
+];
+var timer = +new Date();
+WPromise.all(promises).then(function (data) {
+    console.log('success', data);
+    console.log((+new Date() - timer) / 1000);
+}).catch(function (err) {
+    console.log('error - catch', err);
+    console.log((+new Date() - timer) / 1000);
+});

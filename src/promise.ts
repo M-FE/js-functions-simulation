@@ -1,14 +1,17 @@
-type Resolve = (value?: any) => any;
-type Reject = (reason?: any) => any;
-type Executor = (_resolve: Resolve, _reject: Reject) => void;
-type Then = (onFullfilled?: Resolve, onRejected?: Reject) => WPromise;
-type Catch = (onRejected?: Reject) => WPromise;
-type Finally = (onHandler?: Reject) => WPromise;
+type _Resolve = (value?: any) => any;
+type _Reject = (reason?: any) => any;
+type Executor = (_resolve: _Resolve, _reject: _Reject) => void;
+type Then = (onFullfilled?: _Resolve, onRejected?: _Reject) => WPromise;
+type Catch = (onRejected?: _Reject) => WPromise;
+type Finally = (onHandler?: _Resolve) => WPromise;
+type ParallelPromises = (iterable: WPromise[]) => WPromise;
+type Resolve = (value: any) => WPromise;
+type Reject = (reason: any) => WPromise;
 interface Callback {
-    onFullfilled?: Resolve;
-    onRejected?: Reject;
-    nextResolve: Resolve;
-    nextReject: Reject;
+    onFullfilled?: _Resolve;
+    onRejected?: _Reject;
+    nextResolve: _Resolve;
+    nextReject: _Reject;
 }
 
 class WPromise {
@@ -20,6 +23,7 @@ class WPromise {
     private value: any;
     private reason: any;
     private callbacks: Callback[] = [];
+    private executed: boolean = false;
 
     constructor(executor: Executor) {
         executor(this._resolve.bind(this), this._reject.bind(this));
@@ -39,6 +43,52 @@ class WPromise {
         return this.then(onHandler, onHandler);
     }
 
+    static resolve: Resolve = (value) => {
+        if (WPromise._isPromiseLike(value)) {
+            return value;
+        }
+
+        return new WPromise((resolve) => resolve(value));
+    }
+
+    static reject: Reject = (reason) => {
+        if (WPromise._isPromiseLike(reason)) {
+            return reason;
+        }
+
+        return new WPromise((resolve, reject) => reject(reason));
+    }
+
+    static all: ParallelPromises = (iterable) => {
+        return new WPromise((resolve, reject) => {
+            const ret: any[] = [];
+            let count = 0;
+
+            Array.from(iterable).forEach((item, index) => {
+                WPromise.resolve(item).then(data => {
+                    ret[index] = data;
+                    count++;
+
+                    if (count === iterable.length) {
+                        resolve(ret);
+                    }
+                }, reject);
+            });
+        });
+    }
+
+    static race: ParallelPromises = (iterable) => {
+        return new WPromise((resolve, reject) => {
+            Array.from(iterable).forEach(item => {
+                WPromise.resolve(item).then(resolve, reject);
+            });
+        });
+    }
+
+    private static _isPromiseLike = (data: any): boolean => {
+        return data instanceof WPromise || (['object', 'function'].includes(typeof data) && 'then' in data);
+    }
+
     private _handler = (callback: Callback) => {
         if (this.status === WPromise.PENDING) {
             this.callbacks.push(callback);
@@ -47,22 +97,28 @@ class WPromise {
 
         const { onFullfilled, onRejected, nextResolve, nextReject } = callback;
 
-        if (this.status === WPromise.FULFILLED && onFullfilled) {
-            const toNextValue = onFullfilled(this.value);
+        if (this.status === WPromise.FULFILLED) {
+            const toNextValue = onFullfilled ? onFullfilled(this.value) : this.value;
             nextResolve(toNextValue);
             return;
         }
 
-        if (this.status === WPromise.REJECTED && onRejected) {
-            const toNextReason = onRejected(this.reason);
-            nextResolve(toNextReason);
+        if (this.status === WPromise.REJECTED) {
+            const toNextReason = onRejected ? onRejected(this.reason) : this.reason;
+            nextReject(toNextReason);
         }
     }
 
-    private _resolve: Resolve = (value) => {
+    private _resolve: _Resolve = (value) => {
+        if (this.executed) {
+            return;
+        }
+
+        this.executed = true;
+
         // 链式调用时，针对下一个的promise
         // then方法返回一个promise时，value则返回promise执行的结果
-        if (value instanceof WPromise) {
+        if (WPromise._isPromiseLike(value)) {
             value.then(this._resolve, this._reject);
             return;
         }
@@ -73,8 +129,14 @@ class WPromise {
         this.callbacks.forEach(callback => this._handler(callback));
     }
 
-    private _reject: Reject = (reason) => {
-        if (reason instanceof WPromise) {
+    private _reject: _Reject = (reason) => {
+        if (this.executed) {
+            return;
+        }
+
+        this.executed = true;
+
+        if (WPromise._isPromiseLike(reason)) {
             reason.then(this._resolve, this._reject);
             return;
         }
